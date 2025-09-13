@@ -25,7 +25,7 @@ export default function Home(props) {
               Our Institute Online Scholarship Handling System helps students explore scholarship schemes, check eligibility, and apply seamlessly. Transparency, efficiency, and accessibility—all in one platform.
             </p>
             <Link to="/schemes" className="btn btn-gradient-red py-2 px-4">
-              Explore Schemes
+              Explore Scholarships
             </Link>
           </div>
           <div className="col-lg-6 text-center">
@@ -91,7 +91,7 @@ export default function Home(props) {
             <div className="card shadow-sm h-100 p-3">
               <h5 className="fw-bold">Merit-Based Scholarship</h5>
               <p className="text-muted">
-                For students with excellent academic performance. Amount up to $5000.
+                For students with excellent academic performance. Amount up to ₹50000.
               </p>
               <Link to="/schemes" className="btn btn-outline-danger">
                 Apply Now
@@ -129,7 +129,7 @@ export default function Home(props) {
         <p className="text-muted mb-4">
           Contact our support team for any assistance with scholarships or applications.
         </p>
-        <p className="fw-bold">Email: support@institute.edu | Phone: +91 12345 67890</p>
+        <p className="fw-bold">Email: support@nitsikkim.edu.in | Phone: +91 12345 67890</p>
       </section>
     </div>
   );

@@ -7,6 +7,7 @@ import About from './components/About';
 import Login from './components/Login';
 import SignUp from './components/SignUp';
 import Home from './components/Home';
+import Support from './components/Support';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route exact path='/about' element={<About></About>}></Route>
           <Route exact path='/login' element={<Login></Login>}></Route>
           <Route exact path='/signup' element={<SignUp></SignUp>}></Route>
+          <Route exact path='/support' element={<Support></Support>}></Route>
         </Routes>
       </BrowserRouter>
     </div>

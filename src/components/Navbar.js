@@ -53,7 +53,7 @@ export default function Navbar(props) {
                 <Link className={getNavLinkClass("/")} to="/">Home</Link>
               </li>
               <li className="nav-item">
-                <Link className={getNavLinkClass("/schemes")} to="/schemes">Schemes</Link>
+                <Link className={getNavLinkClass("/schemes")} to="/schemes">Scholarships</Link>
               </li>
               <li className="nav-item">
                 <Link className={getNavLinkClass("/how-to-apply")} to="/how-to-apply">How to Apply</Link>
