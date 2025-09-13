@@ -9,7 +9,7 @@ router.post("/signup", async (req, res) => {
     const { id, name, designation, password } = req.body;
 
     //Check if user exist
-    const existingUser = await pool.query("SELECT * FROM Users WHERE id = $1", [
+    const existingUser = await pool.query("SELECT * FROM users WHERE id = $1", [
       id,
     ]);
     if (existingUser.rows.length > 0) {
