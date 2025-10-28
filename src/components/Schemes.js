@@ -54,8 +54,14 @@ export default function Schemes() {
   ];
 
   return (
-    <div className="container" style={{ paddingTop: "125px" }}>
-      <h2 className="mb-4 text-center">Available Scholarship Schemes</h2>
+    <div className="container" style={{ paddingTop: "200px" }}>
+      <h2 className="mb-4 text-center" style={{
+    fontFamily: "'Poppins', sans-serif",
+    fontWeight: 600,
+    letterSpacing: "1px",
+    color: "#d31a1aff",
+    textTransform: "uppercase",
+  }}>Available Scholarship Schemes</h2>
       <div className="row">
         {schemes.map((scheme) => (
           <div className="col-md-4 mb-4" key={scheme.id}>

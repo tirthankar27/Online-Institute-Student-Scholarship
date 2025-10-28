@@ -5,18 +5,18 @@ import { Link, useLocation } from "react-router-dom";
 
 export default function Navbar(props) {
   const location = useLocation();
-  const role = localStorage.getItem("role"); // 'student', 'staff', or 'admin'
+  const role = localStorage.getItem("designation"); // 'student', 'staff', or 'admin'
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    localStorage.removeItem("userId");
     localStorage.removeItem("username");
-    localStorage.removeItem("role");
+    localStorage.removeItem("designation");
     props.setUsername(null);
-    window.location.href = "/scholarship/login";
+    window.location.href = "/scholarship";
   };
 
   const getNavLinkClass = (path) =>
-    `nav-link fs-4 ${
+    `nav-link fs-6 ${
       location.pathname === path ? "text-danger fw-bold" : "text-dark"
     }`;
 
@@ -28,8 +28,8 @@ export default function Navbar(props) {
             <img
               src={logo}
               alt="Logo"
-              width="200"
-              height="140"
+              width="150"
+              height="100"
               className="d-inline-block align-text-top"
             />
           </Link>
@@ -99,10 +99,10 @@ export default function Navbar(props) {
                     <Link className={getNavLinkClass("/dashboard")} to="/dashboard">Dashboard</Link>
                   </li>
                   <li className="nav-item">
-                    <Link className={getNavLinkClass("/manage-scholarships")} to="/manage-scholarships">Manage Scholarships</Link>
+                    <Link className={getNavLinkClass("/postscholarship")} to="/postscholarship">Post</Link>
                   </li>
                   <li className="nav-item">
-                    <Link className={getNavLinkClass("/reports")} to="/reports">Reports</Link>
+                    <Link className={getNavLinkClass("/manage-scholarships")} to="/manage-scholarships">Manage Scholarships</Link>
                   </li>
                   <li className="nav-item">
                     <Link className={getNavLinkClass("/user-management")} to="/user-management">User Management</Link>
@@ -114,11 +114,11 @@ export default function Navbar(props) {
             <div className="d-flex flex-column flex-lg-row align-items-lg-center gap-3">
               {props.username ? (
                 <>
-                  <span className="nav-link fs-5 text-dark">
-                    Welcome, {props.username} {role && `(${role})`}
+                  <span className="nav-link fs-6 text-dark">
+                    Welcome, {props.username}
                   </span>
                   <button
-                    className="btn btn-danger fs-6 py-2 px-3 fw-semibold"
+                    className="btn btn-danger fs-6py-2 px-3 fw-semibold"
                     onClick={handleLogout}
                   >
                     Logout
@@ -133,7 +133,7 @@ export default function Navbar(props) {
                     Login
                   </Link>
                   <Link
-                    className="btn btn-danger fs-5 py-2 px-3 fw-semibold"
+                    className="btn btn-danger fs-6 py-2 px-3 fw-semibold"
                     to="/signup"
                   >
                     Sign Up

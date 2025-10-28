@@ -32,17 +32,18 @@ export default function Login(props) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id, password }),
+        body: JSON.stringify({ user_id: id, password }),
       });
 
       const result = await response.json();
 
       if (result.user_id) {
-        localStorage.setItem("token", result.authToken || "");
-        localStorage.setItem("username", result.username);
+        // Store backend response
+        localStorage.setItem("username", result.name);
         localStorage.setItem("userId", result.user_id);
         localStorage.setItem("designation", result.designation);
-        props.setUsername(result.username);
+
+        props.setUsername(result.name);
         props.showAlert("Login successful!", "success");
         navigate("/");
       } else {
@@ -55,7 +56,9 @@ export default function Login(props) {
   };
 
   return (
-    <div style={{ position: "relative", minHeight: "100vh", paddingTop:"80px" }}>
+    <div
+      style={{ position: "relative", minHeight: "100vh", paddingTop: "80px" }}
+    >
       <div className="login-overlay"></div>
 
       <div className="container d-flex justify-content-center align-items-center min-vh-100">
@@ -66,11 +69,10 @@ export default function Login(props) {
           <div className="row g-0">
             {/* Left side - Welcome */}
             <div className="col-lg-6 p-4 d-flex flex-column justify-content-center align-items-center">
-              <h1 className="mb-4  text-center">
-                Welcome Back
-              </h1>
+              <h1 className="mb-4  text-center">Welcome Back</h1>
               <p className=" mb-4 text-center">
-                Log in to manage your scholarship applications and track your status.
+                Log in to manage your scholarship applications and track your
+                status.
               </p>
               <div className="mt-3">
                 <img
@@ -117,11 +119,12 @@ export default function Login(props) {
                 </div>
 
                 <div className="mb-3 form-check">
-                  <input type="checkbox" className="form-check-input" id="rememberMe" />
-                  <label
-                    className="form-check-label "
-                    htmlFor="rememberMe"
-                  >
+                  <input
+                    type="checkbox"
+                    className="form-check-input"
+                    id="rememberMe"
+                  />
+                  <label className="form-check-label " htmlFor="rememberMe">
                     Remember me
                   </label>
                 </div>
@@ -130,7 +133,8 @@ export default function Login(props) {
                   type="submit"
                   className="btn w-100 py-2 mb-2 mt-auto"
                   style={{
-                    background: "linear-gradient(135deg, #ff3a3a 0%, #ff6b6b 100%)",
+                    background:
+                      "linear-gradient(135deg, #ff3a3a 0%, #ff6b6b 100%)",
                     border: "none",
                     fontWeight: "600",
                     color: "white",
