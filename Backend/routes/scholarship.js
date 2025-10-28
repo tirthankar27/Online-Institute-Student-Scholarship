@@ -1,22 +1,35 @@
 const express = require("express");
-const router = express.router;
+const router = express.Router();
 const pool = require("../db");
 
-//Insert new scholarships
-router.post("/insertScholarship", async (req, res) => {
+// Middleware to check if user is admin
+function isAdmin(req, res, next) {
+  if (!req.user || req.user.designation !== "admin") {
+    return res.status(403).json({ message: "Access denied: Admins only" });
+  }
+  next();
+}
+
+// ----------------- Insert new scholarship (Admin only) -----------------
+router.post("/insertScholarship", isAdmin, async (req, res) => {
   try {
-    const { org, info, deadline } = req.body;
+    const { title, organization, description, deadline, amount } = req.body;
+
+    if (!title || !organization || !description || !deadline || !amount) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
     const insertResult = await pool.query(
-      "INSERT INTO scholarship (organization, description, deadline) VALUES ($1, $2, $3) RETURNING *",
-      [org, info, deadline]
+      "INSERT INTO scholarship (title, organization, description, deadline, amount) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [title, organization, description, deadline, amount]
     );
+
     res.status(201).json({
       message: "Scholarship inserted successfully",
       scholarship: insertResult.rows[0],
     });
   } catch (error) {
     if (error.code === "23505") {
-      // unique constraint violation
       return res.status(400).json({ message: "Scholarship already exists" });
     }
     console.error("Error inserting scholarship:", error);
@@ -24,8 +37,8 @@ router.post("/insertScholarship", async (req, res) => {
   }
 });
 
-//Fetch all the available scholarships
-router.get("/schemes", async (res, req) => {
+// ----------------- Fetch all scholarships (Everyone) -----------------
+router.get("/schemes", async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT * FROM scholarship ORDER BY deadline ASC"
@@ -36,3 +49,5 @@ router.get("/schemes", async (res, req) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+module.exports = router;
