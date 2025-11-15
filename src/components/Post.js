@@ -24,8 +24,7 @@ export default function PostScholarship(props) {
     setMessage("");
     setIsSubmitting(true);
 
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
+    const role = localStorage.getItem("designation");
 
     if (role !== "admin") {
       setMessage("Access denied: Admins only");
@@ -37,8 +36,7 @@ export default function PostScholarship(props) {
       const res = await fetch(props.postendpoint, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(formData),
       });
@@ -134,12 +132,12 @@ export default function PostScholarship(props) {
                 </div>
 
                 <div className="col-md-6 mb-4">
-                  <label htmlFor="amount" className="form-label fw-semibold">Scholarship Amount ($)</label>
+                  <label htmlFor="amount" className="form-label fw-semibold">Scholarship Amount (₹)</label>
                   <input
                     type="number"
                     id="amount"
                     name="amount"
-                    placeholder="Enter amount in dollars"
+                    placeholder="Enter amount in rupees"
                     value={formData.amount}
                     onChange={handleChange}
                     className="form-control form-control-lg"

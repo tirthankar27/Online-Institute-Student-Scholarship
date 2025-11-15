@@ -5,7 +5,7 @@ import { Link, useLocation } from "react-router-dom";
 
 export default function Navbar(props) {
   const location = useLocation();
-  const role = localStorage.getItem("designation"); // 'student', 'staff', or 'admin'
+  const role = localStorage.getItem("designation"); // 'student', 'authority', or 'admin'
 
   const handleLogout = () => {
     localStorage.removeItem("userId");
@@ -69,25 +69,16 @@ export default function Navbar(props) {
               {props.username && role === "student" && (
                 <>
                   <li className="nav-item">
-                    <Link className={getNavLinkClass("/apply")} to="/apply">Apply for Scholarship</Link>
-                  </li>
-                  <li className="nav-item">
                     <Link className={getNavLinkClass("/my-applications")} to="/my-applications">My Applications</Link>
-                  </li>
-                  <li className="nav-item">
-                    <Link className={getNavLinkClass("/documents")} to="/documents">Documents</Link>
                   </li>
                 </>
               )}
 
               {/* Staff-only Links */}
-              {props.username && role === "staff" && (
+              {props.username && role === "authority" && (
                 <>
                   <li className="nav-item">
                     <Link className={getNavLinkClass("/review")} to="/review">Review Applications</Link>
-                  </li>
-                  <li className="nav-item">
-                    <Link className={getNavLinkClass("/notifications")} to="/notifications">Notifications</Link>
                   </li>
                 </>
               )}
@@ -99,13 +90,7 @@ export default function Navbar(props) {
                     <Link className={getNavLinkClass("/dashboard")} to="/dashboard">Dashboard</Link>
                   </li>
                   <li className="nav-item">
-                    <Link className={getNavLinkClass("/postscholarship")} to="/postscholarship">Post</Link>
-                  </li>
-                  <li className="nav-item">
-                    <Link className={getNavLinkClass("/manage-scholarships")} to="/manage-scholarships">Manage Scholarships</Link>
-                  </li>
-                  <li className="nav-item">
-                    <Link className={getNavLinkClass("/user-management")} to="/user-management">User Management</Link>
+                    <Link className={getNavLinkClass("/manage-applications")} to="/manage-applications">Manage Applications</Link>
                   </li>
                 </>
               )}

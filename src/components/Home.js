@@ -74,7 +74,7 @@ export default function Home(props) {
               </div>
               <h5 className="fw-bold">Verification & Approval</h5>
               <p className="text-muted">
-                Staff verifies documents, and admin approves scholarships for eligible students.
+                Authority verifies documents, and admin approves scholarships for eligible students.
               </p>
             </div>
           </div>
