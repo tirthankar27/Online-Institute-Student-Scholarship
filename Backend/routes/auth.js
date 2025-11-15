@@ -102,8 +102,9 @@ router.post(
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
-      // Login successful
+      // Login successful - return user data without token
       res.json({
+        success: true,
         user_id: user.user_id,
         name: user.name,
         email: user.email,
@@ -111,7 +112,8 @@ router.post(
         message: "Login successful",
       });
     } catch (error) {
-      res.status(500).send(error.message);
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Server error" });
     }
   }
 );

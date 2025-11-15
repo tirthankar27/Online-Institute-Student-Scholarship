@@ -1,12 +1,18 @@
 require("dotenv").config({ path: __dirname + "/.env" });
 const { connectToDB } = require("./db.js");
 const express = require("express");
+const path = require('path');
 const cors = require("cors");
 
 const app = express();
 const port = 5001;
 
-// ✅ Simple CORS - allow everything
+const uploadsPath = path.join(__dirname, '../uploads');
+console.log('Static files serving from:', uploadsPath);
+
+app.use('/uploads', express.static(uploadsPath));
+
+// Simple CORS - allow everything
 app.use(cors());
 
 app.use(express.json());
@@ -18,6 +24,7 @@ app.get("/test", (req, res) => {
 //Routes
 app.use("/api/auth", require("./routes/auth.js"));
 app.use("/api/scholarship", require("./routes/scholarship.js"));
+app.use("/api/application", require("./routes/application.js"));
 
 const startServer = async () => {
   try {
