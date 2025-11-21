@@ -278,4 +278,42 @@ router.post("/approved", async (req, res) => {
   }
 });
 
+router.post("/approved_application", async (req, res) => {
+  try {
+    const { application_id } = req.body;
+
+    if (!application_id) {
+      return res.status(400).json({
+        success: false,
+        message: "application_id is required",
+      });
+    }
+
+    const result = await pool.query(
+      `SELECT amount, renewal_date 
+       FROM approved_applications 
+       WHERE application_id = $1`,
+      [application_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No approved application found for this application_id",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Error fetching approved application:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
 module.exports = router;
