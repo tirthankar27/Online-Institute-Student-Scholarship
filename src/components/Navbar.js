@@ -99,9 +99,13 @@ export default function Navbar(props) {
             <div className="d-flex flex-column flex-lg-row align-items-lg-center gap-3">
               {props.username ? (
                 <>
-                  <span className="nav-link fs-6 text-dark">
-                    Welcome, {props.username}
-                  </span>
+                  <span className="nav-link fs-6 text-dark fw-medium d-flex align-items-center">
+  Welcome,
+  <span className="ms-2 px-3 py-1 bg-light border rounded-pill fw-semibold d-flex align-items-center gap-1">
+    <i className="bi bi-person-circle"></i> {props.username}
+  </span>
+</span>
+
                   <button
                     className="btn btn-danger fs-6py-2 px-3 fw-semibold"
                     onClick={handleLogout}

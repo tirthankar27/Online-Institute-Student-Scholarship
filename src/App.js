@@ -30,6 +30,7 @@ function App() {
   const allApplications = process.env.REACT_APP_ALL_APPLICATIONS;
   const updateBackend = process.env.REACT_APP_UPDATE_STATUS;
   const approvedStudents = process.env.REACT_APP_APPROVED_STUDENTS;
+  const approvedapplicationendpoint = process.env.REACT_APP_APPROVED_APPLICATION;
   const [username, setUsername] = useState("");
   const [alert, setAlert] = useState(null);
 
@@ -97,7 +98,7 @@ function App() {
                 />
               }
             />
-            <Route exact path="/my-applications" element={<MyApplications getapplications={getApllications} scholarshipendpoint={scholarshipEndpoint}/>}/>
+            <Route exact path="/my-applications" element={<MyApplications approvedApplication = {approvedapplicationendpoint} getapplications={getApllications} scholarshipendpoint={scholarshipEndpoint}/>}/>
             <Route exact path="/review" element={<AuthorityReview update={updateBackend} applications={allApplications} getapplications={getApllications} scholarshipendpoint={scholarshipEndpoint}/>}/>
             <Route exact path="/manage-applications" element={<ManageApplications getendpoint={getEndpoint} approved={approvedStudents} update={updateBackend} applications={allApplications} getapplications={getApllications} scholarshipendpoint={scholarshipEndpoint}/>}/>
           </Routes>
