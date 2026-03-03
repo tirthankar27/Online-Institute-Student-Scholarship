@@ -2,9 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-export default function ApplicationForm(props) {
+export default function ApplicationForm() {
   const { user } = useAuth();
   const { id } = useParams();
+  
+  const API = process.env.REACT_APP_API_BASE_URL;
 
   const [scholarship, setScholarship] = useState(null);
   const [message, setMessage] = useState("");
@@ -27,19 +29,52 @@ export default function ApplicationForm(props) {
     marksheet_12: null,
   });
 
+  // Get token from localStorage
+  const getToken = () => {
+    return localStorage.getItem('token');
+  };
+
+  // Helper function to create headers with authorization
+  const getAuthHeaders = (isMultipart = false) => {
+    const token = getToken();
+    const headers = {
+      'Authorization': `Bearer ${token}`
+    };
+    
+    // Don't set Content-Type for multipart form data - browser will set it with boundary
+    if (!isMultipart) {
+      headers['Content-Type'] = 'application/json';
+    }
+    
+    return headers;
+  };
+
   // Fetch scholarship details
   useEffect(() => {
     const fetchScholarship = async () => {
       try {
-        const res = await fetch(`${props.scholarshipendpoint}/${id}`);
+        // Fixed endpoint for fetching scholarship details
+        const res = await fetch(`${API}/scholarships/scheme/${id}`, {
+          method: "GET",
+          headers: getAuthHeaders(),
+          credentials: 'include'
+        });
+        
         const data = await res.json();
-        if (res.ok) setScholarship(data.data);
+        if (res.ok) {
+          setScholarship(data.data || data);
+        } else {
+          console.error("Failed to fetch scholarship:", data.message);
+        }
       } catch (err) {
         console.error("Error fetching scholarship:", err);
       }
     };
-    fetchScholarship();
-  }, [id]);
+    
+    if (id) {
+      fetchScholarship();
+    }
+  }, [id, API]);
 
   // Handle input changes
   const handleChange = (e) => {
@@ -75,32 +110,30 @@ export default function ApplicationForm(props) {
       formDataToSend.append("scholarship_id", id);
 
       // Append files (correct backend names)
-      if (formData.id_card) formDataToSend.append("id_card", formData.id_card);
+      if (formData.id_card) {
+        formDataToSend.append("id_card", formData.id_card);
+      }
 
-      if (formData.category_certificate)
-        formDataToSend.append(
-          "category_certificate",
-          formData.category_certificate
-        );
+      if (formData.category_certificate) {
+        formDataToSend.append("category_certificate", formData.category_certificate);
+      }
 
-      if (formData.recent_sem_marksheet)
-        formDataToSend.append(
-          "recent_sem_marksheet",
-          formData.recent_sem_marksheet
-        );
+      if (formData.recent_sem_marksheet) {
+        formDataToSend.append("recent_sem_marksheet", formData.recent_sem_marksheet);
+      }
 
-      if (formData.marksheet_12)
+      if (formData.marksheet_12) {
         formDataToSend.append("marksheet_12th", formData.marksheet_12);
+      }
 
-      // Auth token
-      const token = localStorage.getItem("token");
-
-      const res = await fetch(props.applyendpoint, {
+      // Fixed endpoint for applying to scholarship
+      const res = await fetch(`${API}/applications/apply`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`, // Flask JWT
+          'Authorization': `Bearer ${getToken()}`
         },
         body: formDataToSend,
+        credentials: 'include'
       });
 
       const data = await res.json();
@@ -125,8 +158,24 @@ export default function ApplicationForm(props) {
           recent_sem_marksheet: null,
           marksheet_12: null,
         });
+
+        // Reset file input fields
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+        fileInputs.forEach(input => input.value = '');
+        
       } else {
-        setMessage(data.error || data.message || "Submission failed.");
+        // Handle specific error cases
+        if (res.status === 401) {
+          setMessage("Unauthorized: Please login again");
+          // Redirect to login if needed
+          // window.location.href = '/login';
+        } else if (res.status === 403) {
+          setMessage("Access denied: Insufficient permissions");
+        } else if (res.status === 400) {
+          setMessage(data.message || "Invalid application data");
+        } else {
+          setMessage(data.message || "Submission failed.");
+        }
       }
     } catch (err) {
       console.error("Error submitting:", err);
@@ -153,6 +202,11 @@ export default function ApplicationForm(props) {
               Deadline:{" "}
               {new Date(scholarship.deadline).toLocaleDateString("en-GB")}
             </p>
+            {scholarship.amount && (
+              <p className="text-success fw-bold">
+                Amount: ₹{scholarship.amount}
+              </p>
+            )}
           </div>
         )}
 
@@ -299,10 +353,11 @@ export default function ApplicationForm(props) {
               type="file"
               className="form-control"
               name="id_card"
-              accept=".pdf"
+              accept=".pdf,.jpg,.jpeg,.png"
               onChange={handleChange}
               required
             />
+            <small className="text-muted">Accepted formats: PDF, JPG, PNG</small>
           </div>
 
           <div className="mb-3">
@@ -313,9 +368,10 @@ export default function ApplicationForm(props) {
               type="file"
               className="form-control"
               name="category_certificate"
-              accept=".pdf"
+              accept=".pdf,.jpg,.jpeg,.png"
               onChange={handleChange}
             />
+            <small className="text-muted">Optional: Upload if applicable</small>
           </div>
 
           <div className="mb-3">
@@ -326,7 +382,7 @@ export default function ApplicationForm(props) {
               type="file"
               className="form-control"
               name="recent_sem_marksheet"
-              accept=".pdf"
+              accept=".pdf,.jpg,.jpeg,.png"
               onChange={handleChange}
               required
             />
@@ -340,7 +396,7 @@ export default function ApplicationForm(props) {
               type="file"
               className="form-control"
               name="marksheet_12"
-              accept=".pdf"
+              accept=".pdf,.jpg,.jpeg,.png"
               onChange={handleChange}
               required
             />
@@ -351,7 +407,14 @@ export default function ApplicationForm(props) {
             className="btn btn-danger w-100 fw-semibold py-2"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Submitting..." : "Submit Application"}
+            {isSubmitting ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Submitting...
+              </>
+            ) : (
+              "Submit Application"
+            )}
           </button>
         </form>
 
@@ -362,6 +425,7 @@ export default function ApplicationForm(props) {
             }`}
             role="alert"
           >
+            <i className={`bi ${message.includes("success") ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill"} me-2`}></i>
             {message}
           </div>
         )}

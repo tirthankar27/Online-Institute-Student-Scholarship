@@ -31,7 +31,7 @@ def insert_scholarship():
                 "title": scholarship.title,
                 "organization": scholarship.organization,
                 "description": scholarship.description,
-                "deadline": scholarship.deadline,
+                "deadline": scholarship.deadline.strftime("%Y-%m-%d"),
                 "amount": scholarship.amount
             }
         }), 201
@@ -39,8 +39,9 @@ def insert_scholarship():
     except ValueError as e:
         return jsonify({"message": str(e)}), 400
 
-    except Exception:
-        return jsonify({"message": "Server error"}), 500
+    except Exception as e:
+        print("ERROR:", str(e))
+        return jsonify({"message": str(e)}), 500
 
 
 # ----------------- Fetch All Scholarships -----------------
@@ -60,7 +61,7 @@ def get_all():
                     "title": s.title,
                     "organization": s.organization,
                     "description": s.description,
-                    "deadline": s.deadline,
+                    "deadline": s.deadline.strftime("%Y-%m-%d"),
                     "amount": s.amount
                 }
                 for s in scholarships
@@ -84,13 +85,36 @@ def get_one(scholarship_id):
                 "title": scholarship.title,
                 "organization": scholarship.organization,
                 "description": scholarship.description,
-                "deadline": scholarship.deadline,
+                "deadline": scholarship.deadline.strftime("%Y-%m-%d"),
                 "amount": scholarship.amount
             }
         }), 200
 
     except ValueError:
-        return jsonify({"message": "No scholarships found", "data": []}), 200
+        return jsonify({"message": "No scholarships found", "data": []}), 404
+
+    except Exception:
+        return jsonify({"message": "Server error"}), 500
+
+# ----------------- Delete Scholarship (Admin Only) -----------------
+@scholarship_bp.route("/scheme/<string:scholarship_id>", methods=["DELETE"])
+@jwt_required()
+def delete_scholarship(scholarship_id):
+
+    claims = get_jwt()
+
+    if claims.get("designation") != "admin":
+        return jsonify({"message": "Access denied: Admins only"}), 403
+
+    try:
+        ScholarshipService.delete(scholarship_id)
+
+        return jsonify({
+            "message": "Scholarship deleted successfully"
+        }), 200
+
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 404
 
     except Exception:
         return jsonify({"message": "Server error"}), 500

@@ -17,7 +17,11 @@ def create_app():
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
     # Initialize extensions
-    CORS(app)
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": "http://localhost:3000"}},
+        supports_credentials=True
+    )
     db.init_app(app)
     jwt.init_app(app)
 

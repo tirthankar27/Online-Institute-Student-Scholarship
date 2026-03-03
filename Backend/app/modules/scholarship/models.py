@@ -8,7 +8,7 @@ import uuid
 class Scholarship(db.Model):
     __tablename__ = "scholarship"
 
-    scholarship_id = db.Column(db.String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    scholarship_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     title = db.Column(db.String(255), nullable=False)
     organization = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False)

@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 
-export default function PostScholarship(props) {
+export default function PostScholarship() {
+  const API = process.env.REACT_APP_API_BASE_URL;
+  
   const [formData, setFormData] = useState({
     title: "",
     organization: "",
@@ -11,6 +13,20 @@ export default function PostScholarship(props) {
 
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Get token from localStorage
+  const getToken = () => {
+    return localStorage.getItem('token');
+  };
+
+  // Helper function to create headers with authorization
+  const getAuthHeaders = () => {
+    const token = getToken();
+    return {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    };
+  };
 
   const handleChange = (e) => {
     setFormData({
@@ -33,17 +49,16 @@ export default function PostScholarship(props) {
     }
 
     try {
-      const res = await fetch(props.postendpoint, {
+      const response = await fetch(`${API}/scholarships/insertScholarship`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(formData),
+        credentials: 'include'
       });
 
-      const data = await res.json();
+      const data = await response.json();
 
-      if (res.ok) {
+      if (response.ok) {
         setMessage("Scholarship posted successfully!");
         setFormData({
           title: "",
@@ -53,9 +68,19 @@ export default function PostScholarship(props) {
           amount: "",
         });
       } else {
-        setMessage(data.message || "Failed to post scholarship");
+        // Handle specific error cases
+        if (response.status === 401) {
+          setMessage("Unauthorized: Please login again");
+          // Redirect to login page if needed
+          // window.location.href = '/login';
+        } else if (response.status === 403) {
+          setMessage("Access denied: Insufficient permissions");
+        } else {
+          setMessage(data.message || "Failed to post scholarship");
+        }
       }
     } catch (err) {
+      console.error("Error posting scholarship:", err);
       setMessage("Server error while posting scholarship");
     } finally {
       setIsSubmitting(false);
@@ -156,7 +181,7 @@ export default function PostScholarship(props) {
                   >
                     {isSubmitting ? (
                       <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                         Posting...
                       </>
                     ) : (

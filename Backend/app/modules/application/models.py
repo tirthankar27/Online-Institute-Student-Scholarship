@@ -9,13 +9,9 @@ from .constants import STATUS_PENDING
 class Application(db.Model):
     __tablename__ = "application"
 
-    application_id = db.Column(
-        db.String,
-        primary_key=True,
-        default=lambda: str(uuid.uuid4())
-    )
+    application_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
-    scholarship_id = db.Column(db.String, nullable=False)
+    scholarship_id = db.Column(db.Integer, nullable=False)
 
     student_name = db.Column(db.String(255), nullable=False)
     dob = db.Column(db.Date, nullable=False)

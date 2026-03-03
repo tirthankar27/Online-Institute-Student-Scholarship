@@ -46,14 +46,14 @@ function App() {
           <Route path="/how-to-apply" element={<HowToApply />} />
           <Route path="/about" element={<About />} />
           <Route path="/support" element={<Support />} />
-          <Route path="/post" element={<Post />} />
+          <Route path="/postscholarship" element={<Post />} />
           <Route path="/login" element={<Login showAlert={showAlert} setUsername={setUsername} />} />
           <Route path="/signup" element={<SignUp showAlert={showAlert} />} />
 
           {/* Protected / Dashboard Routes */}
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/applications" element={<Applications />} />
-          <Route path="/apply" element={<ApplicationForm />} />
+          <Route path="/apply/:id" element={<ApplicationForm />} />
           <Route path="/my-applications" element={<MyApplications />} />
           <Route path="/authority-review" element={<AuthorityReview />} />
           <Route path="/manage-applications" element={<ManageApplications />} />

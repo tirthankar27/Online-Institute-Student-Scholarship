@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 
-export default function AuthorityReview(props) {
+export default function AuthorityReview() {
+  const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5001";
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -9,21 +10,40 @@ export default function AuthorityReview(props) {
   const [filterStatus, setFilterStatus] = useState("all");
   const [loadingDocuments, setLoadingDocuments] = useState({});
 
+  // Get token from localStorage (or wherever you store it)
+  const getToken = () => {
+    return localStorage.getItem('token'); // Adjust based on where you store the token
+  };
+
+  // Helper function to create headers with authorization
+  const getAuthHeaders = () => {
+    const token = getToken();
+    return {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    };
+  };
+
   const fetchApplicationsForReview = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(props.applications, {
+      const response = await fetch(`${API}/applications/applications`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAuthHeaders(),
+        credentials: 'include'
       });
 
       const data = await response.json();
       if (response.ok) {
-        setApplications(data || []);
+        setApplications(data.data || []);
       } else {
         setError(data.message || "Failed to fetch applications");
+        
+        // Handle unauthorized access
+        if (response.status === 401 || response.status === 403) {
+          // Redirect to login or show appropriate message
+          console.error("Unauthorized access");
+        }
       }
     } catch (err) {
       console.error("Error fetching applications:", err);
@@ -31,63 +51,44 @@ export default function AuthorityReview(props) {
     } finally {
       setLoading(false);
     }
-  }, [props.applications]);
+  }, [API]);
 
   const updateApplicationStatus = async (
     applicationId,
     status,
-    comment = "",
-    authstatus,
-    adminstatus
+    comment = ""
   ) => {
     try {
-      // Determine the verification flags based on the status
-      let byAuthority = null;
-      let byAdmin = null;
-      console.log(status);
-      console.log(authstatus);
-      console.log(adminstatus);
+      // Only send status to the backend - the service handles role-based logic
+      const response = await fetch(`${API}/applications/verify/${applicationId}`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          status: status
+          // No need to send byAuthority or byAdmin - backend determines this from JWT claims
+        }),
+        credentials: 'include'
+      });
 
-      if (status === "Approved by Authority") {
-        byAuthority = true;
-      } else if (status === "Rejected by Authority") {
-        byAuthority = false;
-      }
-      if (status === "Approved by Admin") {
-        byAdmin = true;
-      } else if (status === "Rejected by Admin") {
-        byAdmin = false;
-      }
+      const data = await response.json();
 
-      if (!adminstatus) {
-        const response = await fetch(`${props.update}/${applicationId}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            status: status,
-            byAuthority: byAuthority,
-            byAdmin: adminstatus,
-            review_comment: comment,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          setApplications((prev) =>
-            prev.filter((app) => app.application_id !== applicationId)
-          );
-          setSelectedApplication(null);
-          setReviewComment("");
-          alert(`Application ${status} successfully`);
-          fetchApplicationsForReview();
-        } else {
-          alert(data.message || "Failed to update application");
-        }
+      if (response.ok) {
+        setApplications((prev) =>
+          prev.filter((app) => app.application_id !== applicationId)
+        );
+        setSelectedApplication(null);
+        setReviewComment("");
+        alert(`Application ${status} successfully`);
+        fetchApplicationsForReview(); // Refresh the list
       } else {
-        alert("Already approved by admin");
+        alert(data.message || "Failed to update application");
+        
+        // Handle specific error cases
+        if (response.status === 403) {
+          alert("You don't have permission to perform this action");
+        } else if (response.status === 400) {
+          alert(data.message || "Invalid request");
+        }
       }
     } catch (err) {
       console.error("Error updating application:", err);
@@ -107,31 +108,64 @@ export default function AuthorityReview(props) {
     }
 
     try {
-      // Set loading state
       setLoadingDocuments((prev) => ({ ...prev, [buttonKey]: true }));
 
-      // Your file viewing logic here
-      const fileURL = `${process.env.REACT_APP_BACKEND_URL}/${filePath}`;
-      window.open(fileURL, "_blank");
+      // For viewing documents, you might need to add authorization headers
+      // depending on how your backend serves static files
+      const fileURL = `${API}/${filePath}`;
+      
+      // If documents are protected, you might need to fetch with auth headers
+      // and create a blob URL
+      try {
+        const response = await fetch(fileURL, {
+          headers: getAuthHeaders(),
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const blob = await response.blob();
+          const blobUrl = window.URL.createObjectURL(blob);
+          window.open(blobUrl, "_blank");
+          setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100);
+        } else {
+          alert(`Unable to load ${documentType}. Please try again later.`);
+        }
+      } catch (error) {
+        console.error(`Error viewing ${documentType}:`, error);
+        alert(`Unable to load ${documentType}. Please try again later.`);
+      }
     } catch (error) {
       console.error(`Error viewing ${documentType}:`, error);
       alert(`Unable to load ${documentType}. Please try again later.`);
     } finally {
-      // Clear loading state
       setLoadingDocuments((prev) => ({ ...prev, [buttonKey]: false }));
     }
   };
 
   // Function to view document links in table
-  const viewDocumentInTable = (filePath, documentType) => {
+  const viewDocumentInTable = async (filePath, documentType) => {
     if (!filePath) {
       alert(`${documentType} not available`);
       return;
     }
 
     try {
-      const fileURL = `${process.env.REACT_APP_BACKEND_URL}/${filePath}`;
-      window.open(fileURL, "_blank");
+      const fileURL = `${API}/${filePath}`;
+      
+      // If documents are protected, use fetch with auth headers
+      const response = await fetch(fileURL, {
+        headers: getAuthHeaders(),
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        window.open(blobUrl, "_blank");
+        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100);
+      } else {
+        alert(`Unable to load ${documentType}. Please try again later.`);
+      }
     } catch (error) {
       console.error(`Error viewing ${documentType}:`, error);
       alert(`Unable to load ${documentType}. Please try again later.`);
@@ -356,9 +390,7 @@ export default function AuthorityReview(props) {
                 onClick={() =>
                   onApprove(
                     application.application_id,
-                    reviewComment,
-                    application.verified_by_authority,
-                    application.verified_by_admin
+                    reviewComment
                   )
                 }
               >
@@ -371,9 +403,7 @@ export default function AuthorityReview(props) {
                 onClick={() =>
                   onReject(
                     application.application_id,
-                    reviewComment,
-                    application.verified_by_authority,
-                    application.verified_by_admin
+                    reviewComment
                   )
                 }
               >
@@ -426,9 +456,7 @@ export default function AuthorityReview(props) {
                 style={{ width: "auto" }}
               >
                 <option value="all">All Applications</option>
-                <option value="Under Authority Verification">
-                  Pending Review
-                </option>
+                <option value="Pending">Pending Review</option>
                 <option value="Approved by Authority">Approved</option>
                 <option value="Rejected by Authority">Rejected</option>
               </select>
@@ -577,17 +605,14 @@ export default function AuthorityReview(props) {
                             <i className="fas fa-eye me-1"></i>
                             Review
                           </button>
-                          {application.status ===
-                            "Under Authority Verification" && (
+                          {application.status === "Pending" && (
                             <>
                               <button
                                 className="btn btn-sm btn-outline-success"
                                 onClick={() =>
                                   updateApplicationStatus(
                                     application.application_id,
-                                    "Approved by Authority",
-                                    application.verified_by_authority,
-                                    application.verified_by_admin
+                                    "Approved by Authority"
                                   )
                                 }
                               >
@@ -598,9 +623,7 @@ export default function AuthorityReview(props) {
                                 onClick={() =>
                                   updateApplicationStatus(
                                     application.application_id,
-                                    "Rejected by Authority",
-                                    application.verified_by_authority,
-                                    application.verified_by_admin
+                                    "Rejected by Authority"
                                   )
                                 }
                               >
@@ -626,22 +649,18 @@ export default function AuthorityReview(props) {
             setSelectedApplication(null);
             setReviewComment("");
           }}
-          onApprove={(appId, comment, authstatus, adminstatus) =>
+          onApprove={(appId, comment) =>
             updateApplicationStatus(
               appId,
               "Approved by Authority",
-              comment,
-              authstatus,
-              adminstatus
+              comment
             )
           }
-          onReject={(appId, comment, authstatus, adminstatus) =>
+          onReject={(appId, comment) =>
             updateApplicationStatus(
               appId,
               "Rejected by Authority",
-              comment,
-              authstatus,
-              adminstatus
+              comment
             )
           }
         />
@@ -663,7 +682,7 @@ const getStatusBadge = (status) => {
   const statusConfig = {
     "Pending": {
       class: "bg-warning text-dark",
-      text: "Under Verification of Authority",
+      text: "Pending Authority Review",
     },
     "Approved by Authority": {
       class: "bg-success text-white",

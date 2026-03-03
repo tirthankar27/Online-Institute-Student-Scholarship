@@ -34,4 +34,19 @@ class ScholarshipRepository:
             return None
 
         scholarship.total_applicants += 1
+        db.session.commit()
+        return scholarship
+    
+    @staticmethod
+    def delete(scholarship_id):
+        scholarship = Scholarship.query.filter_by(
+            scholarship_id=scholarship_id
+        ).first()
+
+        if not scholarship:
+            return None
+
+        db.session.delete(scholarship)
+        db.session.commit()
+
         return scholarship

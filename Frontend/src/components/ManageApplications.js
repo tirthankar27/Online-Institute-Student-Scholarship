@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 
-export default function ManageApplications(props) {
+export default function ManageApplications() {
+  const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5001";
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -12,16 +13,19 @@ export default function ManageApplications(props) {
   const fetchApplicationsForReview = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(props.applications, {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API}/applications/applications`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
         },
+        credentials: 'include' // if you're using cookies/sessions
       });
 
       const data = await response.json();
       if (response.ok) {
-        setApplications(data || []);
+        setApplications(data.data || []); // Note: your API returns {data: [...]}
       } else {
         setError(data.message || "Failed to fetch applications");
       }
@@ -31,7 +35,7 @@ export default function ManageApplications(props) {
     } finally {
       setLoading(false);
     }
-  }, [props.applications]);
+  }, [API]);
 
   const updateApplicationStatus = async (
     applicationId,
@@ -41,10 +45,9 @@ export default function ManageApplications(props) {
     adminstatus
   ) => {
     try {
-      // Determine the verification flags based on the status
+      const token = localStorage.getItem("token");
       let byAuthority = null;
       let byAdmin = null;
-      console.log(status);
 
       if (status === "Approved by Authority") {
         byAuthority = true;
@@ -56,13 +59,13 @@ export default function ManageApplications(props) {
       } else if (status === "Rejected by Admin") {
         byAdmin = false;
       }
-      console.log(authstatus);
-      console.log(adminstatus);
+      
       if (authstatus) {
-        const response = await fetch(`${props.update}/${applicationId}`, {
+        const response = await fetch(`${API}/applications/verify/${applicationId}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
           },
           body: JSON.stringify({
             status: status,
@@ -70,6 +73,7 @@ export default function ManageApplications(props) {
             byAdmin: byAdmin,
             review_comment: comment,
           }),
+          credentials: 'include'
         });
 
         const data = await response.json();
@@ -86,33 +90,50 @@ export default function ManageApplications(props) {
           alert(data.message || "Failed to update application");
         }
       }
+      
+      // Handle admin approval for approved applications
       const app = applications.find((a) => a.application_id === applicationId);
-      const res = await fetch(props.getendpoint);
-      let data = await res.json();
-      data = data.data;
-      console.log(data);
-      const scholarship = data.find(
-        (s) => s.scholarship_id === app.scholarship_id
-      );
-      const amount = scholarship.amount;
-      if (byAdmin) {
-        const response = await fetch(`${props.approved}`, {
-          method: "POST",
+      
+      if (byAdmin && app) {
+        // First get scholarship details
+        const scholarshipsRes = await fetch(`${API}/application/applications`, {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            application_id: applicationId,
-            scholarship_id: app.scholarship_id,
-            user_id: app.user_id,
-            name: app.student_name,
-            institute: app.institute_name,
-            amount: amount,
-          }),
+          credentials: 'include'
         });
+        
+        let scholarshipsData = await scholarshipsRes.json();
+        scholarshipsData = scholarshipsData.data;
+        console.log(scholarshipsData);
+        
+        const scholarship = scholarshipsData.find(
+          (s) => s.scholarship_id === app.scholarship_id
+        );
+        
+        if (scholarship) {
+          const amount = scholarship.amount;
+          
+          // Fixed endpoint for approved applications
+          const response = await fetch(`${API}/application/approved`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              application_id: applicationId,
+              scholarship_id: app.scholarship_id,
+              user_id: app.user_id,
+              name: app.student_name,
+              institute: app.institute_name,
+              amount: amount,
+            }),
+            credentials: 'include'
+          });
 
-        const data = await response.json();
-        console.log(data);
+          const data = await response.json();
+          console.log(data);
+        }
       }
     } catch (err) {
       console.error("Error updating application:", err);
@@ -132,22 +153,19 @@ export default function ManageApplications(props) {
     }
 
     try {
-      // Set loading state
       setLoadingDocuments((prev) => ({ ...prev, [buttonKey]: true }));
 
-      // Your file viewing logic here
-      const fileURL = `${process.env.REACT_APP_BACKEND_URL}/${filePath}`;
+      // Construct the full URL for the document
+      const fileURL = `${API}/${filePath}`;
       window.open(fileURL, "_blank");
     } catch (error) {
       console.error(`Error viewing ${documentType}:`, error);
       alert(`Unable to load ${documentType}. Please try again later.`);
     } finally {
-      // Clear loading state
       setLoadingDocuments((prev) => ({ ...prev, [buttonKey]: false }));
     }
   };
 
-  // Function to view document links in table
   const viewDocumentInTable = (filePath, documentType) => {
     if (!filePath) {
       alert(`${documentType} not available`);
@@ -155,7 +173,7 @@ export default function ManageApplications(props) {
     }
 
     try {
-      const fileURL = `${process.env.REACT_APP_BACKEND_URL}/${filePath}`;
+      const fileURL = `${API}/${filePath}`;
       window.open(fileURL, "_blank");
     } catch (error) {
       console.error(`Error viewing ${documentType}:`, error);
@@ -539,7 +557,8 @@ export default function ManageApplications(props) {
                                   updateApplicationStatus(
                                     application.application_id,
                                     "Approved by Authority",
-                                    application.verified_by_authority,
+                                    "",
+                                    true,
                                     application.verified_by_admin
                                   )
                                 }
@@ -552,7 +571,8 @@ export default function ManageApplications(props) {
                                   updateApplicationStatus(
                                     application.application_id,
                                     "Rejected by Authority",
-                                    application.verified_by_authority,
+                                    "",
+                                    false,
                                     application.verified_by_admin
                                   )
                                 }
@@ -585,7 +605,7 @@ export default function ManageApplications(props) {
               "Approved by Admin",
               comment,
               authstatus,
-              adminstatus
+              true
             )
           }
           onReject={(appId, comment, authstatus, adminstatus) =>
@@ -594,7 +614,7 @@ export default function ManageApplications(props) {
               "Rejected by Admin",
               comment,
               authstatus,
-              adminstatus
+              false
             )
           }
         />

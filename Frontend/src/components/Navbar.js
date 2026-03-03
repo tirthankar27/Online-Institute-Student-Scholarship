@@ -78,7 +78,7 @@ export default function Navbar(props) {
               {props.username && role === "authority" && (
                 <>
                   <li className="nav-item">
-                    <Link className={getNavLinkClass("/review")} to="/review">Review Applications</Link>
+                    <Link className={getNavLinkClass("/review")} to="/authority-review">Review Applications</Link>
                   </li>
                 </>
               )}

@@ -24,9 +24,9 @@ class ApplicationService:
     @staticmethod
     def save_files(files, roll_number):
 
-        upload_base = current_app.config["UPLOAD_FOLDER"]
-        user_folder = os.path.join(upload_base, roll_number)
+        upload_base = current_app.config["UPLOAD_FOLDER"]  
 
+        user_folder = os.path.join(upload_base, roll_number)
         os.makedirs(user_folder, exist_ok=True)
 
         saved_files = {}
@@ -34,9 +34,13 @@ class ApplicationService:
         for key in files:
             file = files[key]
             filename = file.filename
+
             filepath = os.path.join(user_folder, filename)
             file.save(filepath)
-            saved_files[key] = filepath
+
+            relative_path = os.path.join(roll_number, filename)
+
+            saved_files[key] = relative_path
 
         return saved_files
 
@@ -49,9 +53,9 @@ class ApplicationService:
             raise PermissionError("Students only")
 
         required_fields = [
-            "scholarship_id", "name", "dob", "father_name",
+            "scholarship_id", "student_name", "dob", "father_name",
             "mother_name", "institute_name", "cgpa",
-            "marks_12", "email", "roll_number", "course"
+            "percent_12th", "email", "roll", "course"
         ]
 
         for field in required_fields:
@@ -65,37 +69,37 @@ class ApplicationService:
         if not scholarship:
             raise ValueError("Scholarship not found")
 
-        if scholarship.deadline < datetime.utcnow():
+        if scholarship.deadline < datetime.utcnow().date():
             raise ValueError("Deadline has passed")
 
         existing = Application.query.filter_by(
             scholarship_id=data["scholarship_id"],
-            user_id=data["roll_number"]
+            user_id=data["roll"]
         ).first()
 
         if existing:
             raise ValueError("You have already applied for this scholarship")
 
         saved_files = ApplicationService.save_files(
-            files, data["roll_number"]
+            files, data["roll"]
         )
 
         application = Application(
             scholarship_id=data["scholarship_id"],
-            student_name=data["name"],
+            student_name=data["student_name"],
             dob=data["dob"],
             father_name=data["father_name"],
             mother_name=data["mother_name"],
             institute_name=data["institute_name"],
             cgpa=data["cgpa"],
-            percent_12th=data["marks_12"],
+            percent_12th=data["percent_12th"],
             category_certificate=saved_files.get("category_certificate"),
             recent_sem_marksheet=saved_files.get("recent_sem_marksheet"),
-            marksheet_12th=saved_files.get("marksheet_12"),
+            marksheet_12th=saved_files.get("marksheet_12th"),
             id_card=saved_files.get("id_card"),
-            user_id=data["roll_number"],
+            user_id=data["roll"],
             email=data["email"],
-            roll=data["roll_number"],
+            roll=data["roll"],
             course=data["course"],
             status=STATUS_PENDING
         )

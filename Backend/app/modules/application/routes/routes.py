@@ -1,6 +1,7 @@
 # app/modules/application/routes.py
 
 from flask import Blueprint, request, jsonify
+from flask import send_from_directory, current_app
 from flask_jwt_extended import jwt_required, get_jwt
 from ..services.service import ApplicationService
 from ..repositories.repository import ApplicationRepository
@@ -35,7 +36,9 @@ def apply():
         return jsonify({"message": str(e)}), 400
 
     except Exception as e:
-        return jsonify({"message": "Server error"}), 500
+        print(f"Server error: {str(e)}")  # Add this for debugging
+        print(f"Data received: {data}")     # See what data is coming in
+        return jsonify({"message": f"Server error: {str(e)}"}), 500
 
 
 # ----------------- Get All Applications -----------------
@@ -49,7 +52,26 @@ def get_all():
 
     apps = ApplicationRepository.get_all()
 
-    return jsonify([a.application_id for a in apps])
+    return jsonify({
+        "data": [
+            {
+                "application_id": a.application_id,
+                "student_name": a.student_name,
+                "father_name": a.father_name,
+                "mother_name": a.mother_name,
+                "institute_name": a.institute_name,
+                "course": a.course,
+                "email": a.email,
+                "roll": a.roll,
+                "cgpa": a.cgpa,
+                "percent_12th": a.percent_12th,
+                "status": a.status,
+                "verified_by_authority": a.verified_by_authority,
+                "verified_by_admin": a.verified_by_admin
+            }
+            for a in apps
+        ]
+    }), 200
 
 
 # ----------------- My Applications -----------------
@@ -57,10 +79,44 @@ def get_all():
 @jwt_required()
 def my_apps():
 
-    user_id = get_jwt()["sub"]
-    apps = ApplicationRepository.get_by_user(user_id)
+    try:
+        claims = get_jwt()
+        # Use service layer to get user's applications
+        apps = ApplicationService.get_my_applications(claims)
 
-    return jsonify([a.application_id for a in apps])
+        # Return full application details instead of just IDs
+        return jsonify({
+            "data": [
+                {
+                    "application_id": a.application_id,
+                    "student_name": a.student_name,
+                    "father_name": a.father_name,
+                    "mother_name": a.mother_name,
+                    "email": a.email,
+                    "roll": a.roll,
+                    "institute_name": a.institute_name,
+                    "course": a.course,
+                    "cgpa": a.cgpa,
+                    "percent_12th": a.percent_12th,
+                    "dob": a.dob.isoformat() if a.dob else None,
+                    "status": a.status,
+                    "verified_by_authority": a.verified_by_authority,
+                    "verified_by_admin": a.verified_by_admin,
+                    "scholarship_id": a.scholarship_id,
+                    "id_card": a.id_card,
+                    "category_certificate": a.category_certificate,
+                    "recent_sem_marksheet": a.recent_sem_marksheet,
+                    "marksheet_12th": a.marksheet_12th
+                }
+                for a in apps
+            ]
+        }), 200
+
+    except PermissionError as e:
+        return jsonify({"message": str(e)}), 403
+
+    except Exception as e:
+        return jsonify({"message": "Server error"}), 500
 
 # --------------------- Verify ---------------------
 @application_bp.route("/verify/<string:application_id>", methods=["PATCH"])
@@ -96,3 +152,9 @@ def verify(application_id):
 
     except Exception:
         return jsonify({"message": "Server error"}), 500
+    
+@application_bp.route("/files/<path:filename>", methods=["GET"])
+@jwt_required()
+def serve_file(filename):
+    upload_folder = current_app.config["UPLOAD_FOLDER"]
+    return send_from_directory(upload_folder, filename)

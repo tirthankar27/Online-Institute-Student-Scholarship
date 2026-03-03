@@ -1,13 +1,30 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 
-export default function MyApplications(props) {
+export default function MyApplications() {
   const { user } = useAuth();
+  const API = process.env.REACT_APP_API_BASE_URL;
+  
   const [applications, setApplications] = useState([]);
   const [scholarships, setScholarships] = useState({});
   const [viewModalApp, setViewModalApp] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [loadingDocuments, setLoadingDocuments] = useState({});
+
+  // Get token from localStorage
+  const getToken = () => {
+    return localStorage.getItem('token');
+  };
+
+  // Helper function to create headers with authorization
+  const getAuthHeaders = () => {
+    const token = getToken();
+    return {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    };
+  };
 
   const viewDocument = async (filePath, documentType, buttonKey) => {
     if (!filePath) {
@@ -16,107 +33,155 @@ export default function MyApplications(props) {
     }
 
     try {
-      const fileURL = `${process.env.REACT_APP_BACKEND_URL}/${filePath}`;
-      window.open(fileURL, "_blank");
+      setLoadingDocuments((prev) => ({ ...prev, [buttonKey]: true }));
+
+      // Fetch protected document with authentication
+      const fileURL = `${API}/applications/files/${filePath}`;
+      const response = await fetch(fileURL, {
+        headers: {
+          'Authorization': `Bearer ${getToken()}`
+        },
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        window.open(blobUrl, "_blank");
+        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100);
+      } else {
+        alert(`Unable to load ${documentType}. Please try again later.`);
+      }
     } catch (error) {
+      console.error(`Error viewing ${documentType}:`, error);
       alert(`Unable to load ${documentType}`);
+    } finally {
+      setLoadingDocuments((prev) => ({ ...prev, [buttonKey]: false }));
     }
   };
 
   const fetchMyApplications = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(props.getapplications, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ user_id: user.user_id }),
-      });
+  if (!user?.user_id) return;
+  
+  try {
+    setLoading(true);
+    // Fixed endpoint - get applications by user
+    const response = await fetch(`${API}/applications/my-applications`, {
+      method: "GET",
+      headers: getAuthHeaders(),
+      credentials: 'include'
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (response.ok) {
-        setApplications(data.applications || []);
+    if (response.ok) {
+      // Your API returns { data: [...] } with full application details
+      if (data.data && Array.isArray(data.data)) {
+        // Directly set the applications from data.data
+        setApplications(data.data);
 
-        // Extract unique scholarship IDs to fetch their names
+        // Extract unique scholarship IDs to fetch their details
         const uniqueScholarshipIds = [
           ...new Set(
-            data.applications.map((app) => app.scholarship_id).filter(Boolean)
+            data.data.map((app) => app.scholarship_id).filter(Boolean)
           ),
         ];
 
         // Fetch scholarship details for each unique ID
-        data.applications.forEach((app) => {
-          fetchScholarshipDetails(app.scholarship_id, app.application_id);
+        uniqueScholarshipIds.forEach((scholarshipId) => {
+          fetchScholarshipDetails(scholarshipId);
+        });
+
+        // Fetch approved data for each application if needed
+        data.data.forEach((app) => {
+          if (app.status === "Approved by Admin") {
+            fetchApprovedData(app.application_id, app.scholarship_id);
+          }
         });
       } else {
-        setError(data.message || "Failed to fetch applications");
+        // Fallback for different response structure
+        setApplications(data.applications || []);
       }
-    } catch (err) {
-      console.error("Error fetching applications:", err);
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
+    } else {
+      setError(data.message || "Failed to fetch applications");
+      
+      if (response.status === 401) {
+        // Redirect to login if unauthorized
+        // window.location.href = '/login';
+      }
     }
-  }, [user]);
+  } catch (err) {
+    console.error("Error fetching applications:", err);
+    setError("Network error. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+}, [user?.user_id, API]);
 
-  const fetchScholarshipDetails = async (scholarshipId, applicationId) => {
+  const fetchScholarshipDetails = async (scholarshipId) => {
     try {
-      const response = await fetch(
-        `${props.scholarshipendpoint}/${scholarshipId}`
-      );
+      // Fixed endpoint for fetching scholarship details
+      const response = await fetch(`${API}/scholarships/scheme/${scholarshipId}`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+        credentials: 'include'
+      });
+      
       const data = await response.json();
-      let approvedData = await fetchApprovedData(applicationId);
 
-      if (response.ok && data.data) {
+      if (response.ok) {
         setScholarships((prev) => ({
           ...prev,
-          [scholarshipId]: {
-            ...data.data,
-            ...approvedData,
-          },
+          [scholarshipId]: data.data || data,
         }));
       }
     } catch (err) {
       console.error("Error fetching scholarship details:", err);
     }
   };
-  const fetchApprovedData = async (applicationId) => {
+
+  const fetchApprovedData = async (applicationId, scholarshipId) => {
     try {
-      const response = await fetch(props.approvedApplication, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ application_id: applicationId }),
+      // Fixed endpoint for fetching approved application data
+      const response = await fetch(`${API}/application/approved/${applicationId}`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+        credentials: 'include'
       });
 
       const data = await response.json();
       if (response.ok && data.data) {
-        return data.data; // { amount, renewal_date }
+        setScholarships((prev) => ({
+          ...prev,
+          [scholarshipId]: {
+            ...prev[scholarshipId],
+            ...data.data,
+          },
+        }));
       }
     } catch (err) {
       console.error("Error fetching approved data:", err);
     }
-
-    return null;
   };
 
   useEffect(() => {
-    if (!user?.user_id) return;
     fetchMyApplications();
-  }, [user?.user_id]);
+  }, [fetchMyApplications]);
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      "Under Authority Verification": {
+      "Pending": {
         class: "bg-warning text-dark",
-        text: "Under Review",
+        text: "Pending Authority Review",
       },
       "Approved by Authority": {
         class: "bg-info text-white",
         text: "Authority Approved",
       },
-      "Approved by Admin": { class: "bg-success text-white", text: "Approved" },
+      "Approved by Admin": { 
+        class: "bg-success text-white", 
+        text: "Approved" 
+      },
       "Rejected by Authority": {
         class: "bg-danger text-white",
         text: "Rejected by Authority",
@@ -124,10 +189,6 @@ export default function MyApplications(props) {
       "Rejected by Admin": {
         class: "bg-danger text-white",
         text: "Rejected by Admin",
-      },
-      "Pending Documents": {
-        class: "bg-secondary text-white",
-        text: "Pending Documents",
       },
     };
 
@@ -139,6 +200,7 @@ export default function MyApplications(props) {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-IN", {
       day: "2-digit",
@@ -149,7 +211,7 @@ export default function MyApplications(props) {
 
   if (!user) {
     return (
-      <div className="container mt-4">
+      <div className="container mt-4" style={{ paddingTop: "120px" }}>
         <div className="alert alert-warning text-center">
           Please log in to view your applications.
         </div>
@@ -159,7 +221,7 @@ export default function MyApplications(props) {
 
   if (loading) {
     return (
-      <div className="container mt-4">
+      <div className="container mt-4" style={{ paddingTop: "120px" }}>
         <div className="text-center">
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Loading...</span>
@@ -177,8 +239,18 @@ export default function MyApplications(props) {
     >
       <div className="card shadow">
         <div className="card-header bg-danger text-white">
-          <h3 className="mb-0">My Scholarship Applications</h3>
-          <p className="mb-0">Total Applications: {applications.length}</p>
+          <div className="d-flex justify-content-between align-items-center">
+            <div>
+              <h3 className="mb-0">My Scholarship Applications</h3>
+              <p className="mb-0">Total Applications: {applications.length}</p>
+            </div>
+            <button
+              className="btn btn-light"
+              onClick={fetchMyApplications}
+            >
+              <i className="fas fa-sync-alt"></i> Refresh
+            </button>
+          </div>
         </div>
 
         <div className="card-body p-0">
@@ -233,7 +305,7 @@ export default function MyApplications(props) {
                     <th style={{ minWidth: "90px" }}>CGPA</th>
                     <th style={{ minWidth: "130px" }}>12th Marks (%)</th>
                     <th style={{ minWidth: "120px" }}>Status</th>
-                    <th style={{ minWidth: "30px" }}>Actions</th>
+                    <th style={{ minWidth: "100px" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -252,7 +324,7 @@ export default function MyApplications(props) {
                       <td>
                         <div>
                           <strong className="text-success">
-                            {scholarships[application.scholarship_id]?.title}
+                            {scholarships[application.scholarship_id]?.title || "Loading..."}
                           </strong>
                         </div>
                       </td>
@@ -290,16 +362,16 @@ export default function MyApplications(props) {
                         <button
                           className="btn btn-sm btn-outline-primary w-100"
                           onClick={() => {
-                            const scholarship =
-                              scholarships[application.scholarship_id];
+                            const scholarship = scholarships[application.scholarship_id] || {};
                             setViewModalApp({
                               ...application,
-                              scholarship_title: scholarship?.title || "N/A",
-                              amount: scholarship?.amount || "N/A",
-                              renewal_date: scholarship?.renewal_date || "N/A",
+                              scholarship_title: scholarship.title || "N/A",
+                              amount: scholarship.amount || "N/A",
+                              renewal_date: scholarship.renewal_date || null,
                             });
                           }}
                         >
+                          <i className="fas fa-eye me-1"></i>
                           View Details
                         </button>
                       </td>
@@ -311,6 +383,8 @@ export default function MyApplications(props) {
           )}
         </div>
       </div>
+
+      {/* View Modal */}
       {viewModalApp && (
         <div
           className="modal fade show d-block"
@@ -334,47 +408,46 @@ export default function MyApplications(props) {
               <div className="modal-body">
                 <div className="row">
                   <div className="col-md-6">
-                    <h6>Student Information</h6>
-                    <p>
-                      <strong>Name:</strong> {viewModalApp.student_name}
-                    </p>
-                    <p>
-                      <strong>Institute:</strong> {viewModalApp.institute_name}
-                    </p>
-                    <p>
-                      <strong>Course:</strong> {viewModalApp.course}
-                    </p>
-                    <p>
-                      <strong>CGPA:</strong> {viewModalApp.cgpa}
-                    </p>
+                    <h6 className="border-bottom pb-2">Student Information</h6>
+                    <p><strong>Name:</strong> {viewModalApp.student_name}</p>
+                    <p><strong>Father's Name:</strong> {viewModalApp.father_name}</p>
+                    <p><strong>Mother's Name:</strong> {viewModalApp.mother_name}</p>
+                    <p><strong>Date of Birth:</strong> {formatDate(viewModalApp.dob)}</p>
+                    <p><strong>Email:</strong> {viewModalApp.email}</p>
                   </div>
 
                   <div className="col-md-6">
-                    <h6>Additional Info</h6>
-                    <p>
-                      <strong>Scholarship:</strong>{" "}
-                      {viewModalApp.scholarship_title}
-                    </p>
-                    <p>
-                      <strong>12th Marks:</strong> {viewModalApp.percent_12th}%
-                    </p>
-                    <p>
-                      <strong>Status:</strong> {viewModalApp.status}
-                    </p>
-                    <p>
-                      <strong>Amount:</strong> {viewModalApp.amount}
-                    </p>
-                    <p>
-                      <strong>Renewal Date:</strong>{" "}
-                      {formatDate(viewModalApp.renewal_date)}
-                    </p>
+                    <h6 className="border-bottom pb-2">Academic Information</h6>
+                    <p><strong>Institute:</strong> {viewModalApp.institute_name}</p>
+                    <p><strong>Course:</strong> {viewModalApp.course}</p>
+                    <p><strong>Roll Number:</strong> {viewModalApp.roll}</p>
+                    <p><strong>CGPA:</strong> {viewModalApp.cgpa}</p>
+                    <p><strong>12th Marks:</strong> {viewModalApp.percent_12th}%</p>
+                  </div>
+                </div>
+
+                <div className="row mt-3">
+                  <div className="col-md-6">
+                    <h6 className="border-bottom pb-2">Scholarship Details</h6>
+                    <p><strong>Title:</strong> {viewModalApp.scholarship_title}</p>
+                    <p><strong>Amount:</strong> ₹{viewModalApp.amount}</p>
+                    {viewModalApp.renewal_date && (
+                      <p><strong>Renewal Date:</strong> {formatDate(viewModalApp.renewal_date)}</p>
+                    )}
+                  </div>
+
+                  <div className="col-md-6">
+                    <h6 className="border-bottom pb-2">Application Status</h6>
+                    <p><strong>Status:</strong> {getStatusBadge(viewModalApp.status)}</p>
+                    <p><strong>Verified by Authority:</strong> {viewModalApp.verified_by_authority ? "Yes" : "No"}</p>
+                    <p><strong>Verified by Admin:</strong> {viewModalApp.verified_by_admin ? "Yes" : "No"}</p>
                   </div>
                 </div>
 
                 <hr />
 
-                <h6>Documents</h6>
-                <div className="d-flex gap-2 flex-wrap">
+                <h6 className="border-bottom pb-2">Documents</h6>
+                <div className="d-flex gap-2 flex-wrap mt-3">
                   <button
                     className="btn btn-sm btn-outline-primary"
                     onClick={() =>
@@ -384,8 +457,18 @@ export default function MyApplications(props) {
                         `v-idCard-${viewModalApp.application_id}`
                       )
                     }
+                    disabled={!viewModalApp.id_card || loadingDocuments[`v-idCard-${viewModalApp.application_id}`]}
                   >
-                    <i className="fas fa-id-card me-1"></i> ID Card
+                    {loadingDocuments[`v-idCard-${viewModalApp.application_id}`] ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin me-1"></i>
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-id-card me-1"></i> ID Card
+                      </>
+                    )}
                   </button>
 
                   <button
@@ -397,8 +480,18 @@ export default function MyApplications(props) {
                         `v-sem-${viewModalApp.application_id}`
                       )
                     }
+                    disabled={!viewModalApp.recent_sem_marksheet || loadingDocuments[`v-sem-${viewModalApp.application_id}`]}
                   >
-                    <i className="fas fa-file-alt me-1"></i> Semester Marksheet
+                    {loadingDocuments[`v-sem-${viewModalApp.application_id}`] ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin me-1"></i>
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-file-alt me-1"></i> Semester Marksheet
+                      </>
+                    )}
                   </button>
 
                   <button
@@ -410,10 +503,44 @@ export default function MyApplications(props) {
                         `v-12th-${viewModalApp.application_id}`
                       )
                     }
+                    disabled={!viewModalApp.marksheet_12th || loadingDocuments[`v-12th-${viewModalApp.application_id}`]}
                   >
-                    <i className="fas fa-graduation-cap me-1"></i> 12th
-                    Marksheet
+                    {loadingDocuments[`v-12th-${viewModalApp.application_id}`] ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin me-1"></i>
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-graduation-cap me-1"></i> 12th Marksheet
+                      </>
+                    )}
                   </button>
+
+                  {viewModalApp.category_certificate && (
+                    <button
+                      className="btn btn-sm btn-outline-primary"
+                      onClick={() =>
+                        viewDocument(
+                          viewModalApp.category_certificate,
+                          "Category Certificate",
+                          `v-cat-${viewModalApp.application_id}`
+                        )
+                      }
+                      disabled={loadingDocuments[`v-cat-${viewModalApp.application_id}`]}
+                    >
+                      {loadingDocuments[`v-cat-${viewModalApp.application_id}`] ? (
+                        <>
+                          <i className="fas fa-spinner fa-spin me-1"></i>
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <i className="fas fa-certificate me-1"></i> Category Certificate
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 

@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function Schemes(props) {
+export default function Schemes() {
   const [schemes, setSchemes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  const API = process.env.REACT_APP_API_BASE_URL;
+
   useEffect(() => {
     const fetchSchemes = async () => {
       try {
-        const res = await fetch(props.getendpoint);
+        const res = await fetch(`${API}/scholarships/schemes`);
         const data = await res.json();
 
         if (!res.ok) {
@@ -28,7 +30,7 @@ export default function Schemes(props) {
     };
 
     fetchSchemes();
-  }, [props.getendpoint]);
+  }, [API]);
 
   if (loading) {
     return <h3 className="text-center mt-5">Loading scholarships...</h3>;

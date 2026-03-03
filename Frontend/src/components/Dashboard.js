@@ -6,6 +6,7 @@ export default function Dashboard(props) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const API = process.env.REACT_APP_API_BASE_URL;
 
   useEffect(() => {
     const role = localStorage.getItem("designation");
@@ -20,7 +21,7 @@ export default function Dashboard(props) {
     const fetchScholarships = async () => {
       try {
         setLoading(true);
-        const res = await fetch(props.getendpoint, {
+        const res = await fetch(`${API}/scholarships/schemes`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -45,7 +46,7 @@ export default function Dashboard(props) {
     };
 
     fetchScholarships();
-  }, [props.getendpoint]);
+  }, [API]);
 
   const handlePostClick = () => {
     navigate("/postscholarship");
@@ -60,25 +61,36 @@ export default function Dashboard(props) {
   }
 
   const handleDeleteClick = async (scholarshipId) => {
-    if (window.confirm("Are you sure you want to delete this scholarship?")) {
-      try {
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${props.deleteendpoint || props.getendpoint}/${scholarshipId}`, {
+    if (!window.confirm("Are you sure you want to delete this scholarship?"))
+      return;
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(
+        `${API}/scholarships/scheme/${scholarshipId}`,
+        {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        });
-        
-        if (res.ok) {
-          setScholarships(scholarships.filter(sch => sch._id !== scholarshipId));
-          setMessage("Scholarship deleted successfully");
-        } else {
-          setMessage("Failed to delete scholarship");
         }
-      } catch (err) {
-        setMessage("Server error while deleting scholarship");
+      );
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setScholarships((prev) =>
+          prev.filter(
+            (sch) => sch.scholarship_id !== scholarshipId
+          )
+        );
+        setMessage("Scholarship deleted successfully");
+      } else {
+        setMessage(data.message || "Failed to delete scholarship");
       }
+    } catch (err) {
+      setMessage("Server error while deleting scholarship");
     }
   };
 
@@ -159,7 +171,7 @@ export default function Dashboard(props) {
                   </thead>
                   <tbody>
                     {scholarships.map((sch, index) => (
-                      <tr key={sch._id || index} className="hover-shadow">
+                      <tr key={sch.scholarship_id || index} className="hover-shadow">
                         <td className="ps-4 fw-semibold text-muted">{index + 1}</td>
                         <td>
                           <div className="fw-semibold text-dark">{sch.title}</div>
@@ -198,21 +210,21 @@ export default function Dashboard(props) {
                           <div className="btn-group btn-group-sm" role="group">
                             <button
                               className="btn btn-outline-primary"
-                              onClick={() => handleEditClick(sch._id)}
+                              onClick={() => handleEditClick(sch.scholarship_id)}
                               title="Edit Scholarship"
                             >
                               <i className="bi bi-pencil"></i>
                             </button>
                             <button
                               className="btn btn-outline-success"
-                              onClick={() => handleApplicantsClick(sch._id)}
+                              onClick={() => handleApplicantsClick(sch.scholarship_id)}
                               title="View Applicants"
                             >
                               <i className="bi bi-people"></i>
                             </button>
                             <button
                               className="btn btn-outline-danger"
-                              onClick={() => handleDeleteClick(sch._id)}
+                              onClick={() => handleDeleteClick(sch.scholarship_id)}
                               title="Delete Scholarship"
                             >
                               <i className="bi bi-trash"></i>

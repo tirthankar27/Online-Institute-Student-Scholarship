@@ -14,9 +14,7 @@ class ApplicationRepository:
 
     @staticmethod
     def get_all():
-        return Application.query.order_by(
-            Application.created_at.desc()
-        ).all()
+        return Application.query.all()
 
     @staticmethod
     def get_by_id(application_id):
@@ -28,7 +26,7 @@ class ApplicationRepository:
     def get_by_user(user_id):
         return Application.query.filter_by(
             user_id=user_id
-        ).order_by(Application.created_at.desc()).all()
+        ).all()
 
     @staticmethod
     def update(application):
