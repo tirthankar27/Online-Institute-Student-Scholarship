@@ -1,0 +1,18 @@
+# app/modules/application/constants.py
+
+STATUS_PENDING = "Pending"
+
+STATUS_AUTH_APPROVED = "Authority Approved"
+STATUS_AUTH_REJECTED = "Authority Rejected"
+
+STATUS_ADMIN_APPROVED = "Admin Approved"
+STATUS_ADMIN_REJECTED = "Admin Rejected"
+
+
+VALID_STATUSES = [
+    STATUS_PENDING,
+    STATUS_AUTH_APPROVED,
+    STATUS_AUTH_REJECTED,
+    STATUS_ADMIN_APPROVED,
+    STATUS_ADMIN_REJECTED,
+]
