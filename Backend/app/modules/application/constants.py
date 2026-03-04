@@ -2,11 +2,11 @@
 
 STATUS_PENDING = "Pending"
 
-STATUS_AUTH_APPROVED = "Authority Approved"
-STATUS_AUTH_REJECTED = "Authority Rejected"
+STATUS_AUTH_APPROVED = "Approved by Authority"
+STATUS_AUTH_REJECTED = "Rejected by Authority"
 
-STATUS_ADMIN_APPROVED = "Admin Approved"
-STATUS_ADMIN_REJECTED = "Admin Rejected"
+STATUS_ADMIN_APPROVED = "Approved by Admin"
+STATUS_ADMIN_REJECTED = "Rejected by Admin"
 
 
 VALID_STATUSES = [

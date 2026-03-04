@@ -1,10 +1,11 @@
 # app/modules/application/models.py
 
 from app.extensions import db
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
 from .constants import STATUS_PENDING
-
+def default_renewal():
+    return datetime.utcnow() + timedelta(days=365)
 
 class Application(db.Model):
     __tablename__ = "application"
@@ -44,19 +45,18 @@ class Application(db.Model):
 class ApprovedApplication(db.Model):
     __tablename__ = "approved_applications"
 
-    id = db.Column(db.Integer, primary_key=True)
-
     application_id = db.Column(
-        db.String,
+        db.Integer,
+        primary_key=True,
         nullable=False,
         unique=True
     )
 
-    scholarship_id = db.Column(db.String, nullable=False)
+    scholarship_id = db.Column(db.Integer, nullable=False)
     user_id = db.Column(db.String, nullable=False)
 
     name = db.Column(db.String(255), nullable=False)
     institute = db.Column(db.String(255), nullable=False)
     amount = db.Column(db.Float, nullable=False)
-    
-    renewal_date = db.Column(db.DateTime, default=datetime.utcnow)
+
+    renewal_date = db.Column(db.DateTime, default=default_renewal)

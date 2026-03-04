@@ -20,12 +20,12 @@ export default function ManageApplications() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        credentials: 'include' // if you're using cookies/sessions
+        credentials: 'include'
       });
 
       const data = await response.json();
       if (response.ok) {
-        setApplications(data.data || []); // Note: your API returns {data: [...]}
+        setApplications(data.data || []);
       } else {
         setError(data.message || "Failed to fetch applications");
       }
@@ -48,7 +48,7 @@ export default function ManageApplications() {
       const token = localStorage.getItem("token");
       let byAuthority = null;
       let byAdmin = null;
-
+      console.log(status, authstatus, adminstatus);
       if (status === "Approved by Authority") {
         byAuthority = true;
       } else if (status === "Rejected by Authority") {
@@ -90,51 +90,6 @@ export default function ManageApplications() {
           alert(data.message || "Failed to update application");
         }
       }
-      
-      // Handle admin approval for approved applications
-      const app = applications.find((a) => a.application_id === applicationId);
-      
-      if (byAdmin && app) {
-        // First get scholarship details
-        const scholarshipsRes = await fetch(`${API}/application/applications`, {
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: 'include'
-        });
-        
-        let scholarshipsData = await scholarshipsRes.json();
-        scholarshipsData = scholarshipsData.data;
-        console.log(scholarshipsData);
-        
-        const scholarship = scholarshipsData.find(
-          (s) => s.scholarship_id === app.scholarship_id
-        );
-        
-        if (scholarship) {
-          const amount = scholarship.amount;
-          
-          // Fixed endpoint for approved applications
-          const response = await fetch(`${API}/application/approved`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              application_id: applicationId,
-              scholarship_id: app.scholarship_id,
-              user_id: app.user_id,
-              name: app.student_name,
-              institute: app.institute_name,
-              amount: amount,
-            }),
-            credentials: 'include'
-          });
-
-          const data = await response.json();
-          console.log(data);
-        }
-      }
     } catch (err) {
       console.error("Error updating application:", err);
       alert("Network error. Please try again.");
@@ -155,29 +110,70 @@ export default function ManageApplications() {
     try {
       setLoadingDocuments((prev) => ({ ...prev, [buttonKey]: true }));
 
-      // Construct the full URL for the document
-      const fileURL = `${API}/${filePath}`;
-      window.open(fileURL, "_blank");
+      const token = localStorage.getItem("token");
+
+      const encodedPath = encodeURIComponent(filePath);
+      const fileURL = `${API}/applications/files/${encodedPath}`;
+
+      const response = await fetch(fileURL, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        credentials: "include"
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        window.open(blobUrl, "_blank");
+        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100);
+      } else {
+        alert(`Unable to load ${documentType}. Please try again later.`);
+      }
     } catch (error) {
       console.error(`Error viewing ${documentType}:`, error);
-      alert(`Unable to load ${documentType}. Please try again later.`);
+      alert(`Unable to load ${documentType}`);
     } finally {
       setLoadingDocuments((prev) => ({ ...prev, [buttonKey]: false }));
     }
   };
 
-  const viewDocumentInTable = (filePath, documentType) => {
+  const viewDocumentInTable = async (filePath, documentType) => {
     if (!filePath) {
       alert(`${documentType} not available`);
       return;
     }
 
+    const buttonKey = `${documentType}-${filePath}`;
+
     try {
-      const fileURL = `${API}/${filePath}`;
-      window.open(fileURL, "_blank");
+      setLoadingDocuments((prev) => ({ ...prev, [buttonKey]: true }));
+
+      const token = localStorage.getItem("token");
+
+      const encodedPath = encodeURIComponent(filePath);
+      const fileURL = `${API}/applications/files/${encodedPath}`;
+
+      const response = await fetch(fileURL, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        credentials: "include"
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        window.open(blobUrl, "_blank");
+        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100);
+      } else {
+        alert(`Unable to load ${documentType}. Please try again later.`);
+      }
     } catch (error) {
       console.error(`Error viewing ${documentType}:`, error);
-      alert(`Unable to load ${documentType}. Please try again later.`);
+      alert(`Unable to load ${documentType}`);
+    } finally {
+      setLoadingDocuments((prev) => ({ ...prev, [buttonKey]: false }));
     }
   };
 

@@ -13,7 +13,6 @@ application_bp = Blueprint("application", __name__)
 @application_bp.route("/apply", methods=["POST"])
 @jwt_required()
 def apply():
-
     try:
         claims = get_jwt()
 
@@ -45,7 +44,6 @@ def apply():
 @application_bp.route("/applications", methods=["GET"])
 @jwt_required()
 def get_all():
-
     claims = get_jwt()
     if claims["designation"] not in ["admin", "authority"]:
         return jsonify({"message": "Access denied"}), 403
@@ -59,15 +57,21 @@ def get_all():
                 "student_name": a.student_name,
                 "father_name": a.father_name,
                 "mother_name": a.mother_name,
-                "institute_name": a.institute_name,
-                "course": a.course,
                 "email": a.email,
                 "roll": a.roll,
+                "institute_name": a.institute_name,
+                "course": a.course,
                 "cgpa": a.cgpa,
                 "percent_12th": a.percent_12th,
+                "dob": a.dob.isoformat() if a.dob else None,
                 "status": a.status,
                 "verified_by_authority": a.verified_by_authority,
-                "verified_by_admin": a.verified_by_admin
+                "verified_by_admin": a.verified_by_admin,
+                "scholarship_id": a.scholarship_id,
+                "id_card": a.id_card,
+                "category_certificate": a.category_certificate,
+                "recent_sem_marksheet": a.recent_sem_marksheet,
+                "marksheet_12th": a.marksheet_12th
             }
             for a in apps
         ]
@@ -78,7 +82,6 @@ def get_all():
 @application_bp.route("/my-applications", methods=["GET"])
 @jwt_required()
 def my_apps():
-
     try:
         claims = get_jwt()
         # Use service layer to get user's applications
@@ -122,8 +125,6 @@ def my_apps():
 @application_bp.route("/verify/<string:application_id>", methods=["PATCH"])
 @jwt_required()
 def verify(application_id):
-
-    from flask_jwt_extended import get_jwt
     claims = get_jwt()
 
     data = request.get_json()

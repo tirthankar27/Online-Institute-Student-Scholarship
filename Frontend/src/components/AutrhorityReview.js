@@ -79,7 +79,7 @@ export default function AuthorityReview() {
         setSelectedApplication(null);
         setReviewComment("");
         alert(`Application ${status} successfully`);
-        fetchApplicationsForReview(); // Refresh the list
+        fetchApplicationsForReview();
       } else {
         alert(data.message || "Failed to update application");
         
@@ -101,6 +101,13 @@ export default function AuthorityReview() {
     return applications.filter((app) => app.status === filterStatus);
   };
 
+  // Helper function to check if status is pending (case-insensitive)
+  const isPendingStatus = (status) => {
+    if (!status) return false;
+    const statusLower = status.toLowerCase();
+    return statusLower.includes('pending') || statusLower === 'submitted' || statusLower === 'under review';
+  };
+
   const viewDocument = async (filePath, documentType, buttonKey) => {
     if (!filePath) {
       alert(`${documentType} not available`);
@@ -110,51 +117,12 @@ export default function AuthorityReview() {
     try {
       setLoadingDocuments((prev) => ({ ...prev, [buttonKey]: true }));
 
-      // For viewing documents, you might need to add authorization headers
-      // depending on how your backend serves static files
-      const fileURL = `${API}/${filePath}`;
-      
-      // If documents are protected, you might need to fetch with auth headers
-      // and create a blob URL
-      try {
-        const response = await fetch(fileURL, {
-          headers: getAuthHeaders(),
-          credentials: 'include'
-        });
-        
-        if (response.ok) {
-          const blob = await response.blob();
-          const blobUrl = window.URL.createObjectURL(blob);
-          window.open(blobUrl, "_blank");
-          setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100);
-        } else {
-          alert(`Unable to load ${documentType}. Please try again later.`);
-        }
-      } catch (error) {
-        console.error(`Error viewing ${documentType}:`, error);
-        alert(`Unable to load ${documentType}. Please try again later.`);
-      }
-    } catch (error) {
-      console.error(`Error viewing ${documentType}:`, error);
-      alert(`Unable to load ${documentType}. Please try again later.`);
-    } finally {
-      setLoadingDocuments((prev) => ({ ...prev, [buttonKey]: false }));
-    }
-  };
-
-  // Function to view document links in table
-  const viewDocumentInTable = async (filePath, documentType) => {
-    if (!filePath) {
-      alert(`${documentType} not available`);
-      return;
-    }
-
-    try {
-      const fileURL = `${API}/${filePath}`;
-      
-      // If documents are protected, use fetch with auth headers
+      // Fetch protected document with authentication
+      const fileURL = `${API}/applications/files/${filePath}`;
       const response = await fetch(fileURL, {
-        headers: getAuthHeaders(),
+        headers: {
+          'Authorization': `Bearer ${getToken()}`
+        },
         credentials: 'include'
       });
       
@@ -168,7 +136,67 @@ export default function AuthorityReview() {
       }
     } catch (error) {
       console.error(`Error viewing ${documentType}:`, error);
-      alert(`Unable to load ${documentType}. Please try again later.`);
+      alert(`Unable to load ${documentType}`);
+    } finally {
+      setLoadingDocuments((prev) => ({ ...prev, [buttonKey]: false }));
+    }
+  };
+
+  // Function to view document links in table
+  const viewDocumentInTable = async (filePath, documentType) => {
+    if (!filePath) {
+      alert(`${documentType} not available`);
+      return;
+    }
+
+    // Create a unique key for this document button
+    const buttonKey = `${documentType}-${filePath}`;
+    
+    try {
+      setLoadingDocuments((prev) => ({ ...prev, [buttonKey]: true }));
+
+      const token = getToken();
+      if (!token) {
+        alert("You are not authenticated. Please log in again.");
+        return;
+      }
+
+      // Encode the file path to handle special characters
+      const encodedPath = encodeURIComponent(filePath);
+      const fileURL = `${API}/applications/files/${encodedPath}`;
+      
+      console.log('Fetching document from:', fileURL); // Debug log
+      
+      const response = await fetch(fileURL, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        window.open(blobUrl, "_blank");
+        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100);
+      } else {
+        console.error('Response status:', response.status);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        
+        if (response.status === 401) {
+          alert("Your session has expired. Please log in again.");
+          // Redirect to login if needed
+          // window.location.href = '/login';
+        } else {
+          alert(`Unable to load ${documentType}. Please try again later.`);
+        }
+      }
+    } catch (error) {
+      console.error(`Error viewing ${documentType}:`, error);
+      alert(`Unable to load ${documentType}`);
+    } finally {
+      setLoadingDocuments((prev) => ({ ...prev, [buttonKey]: false }));
     }
   };
 
@@ -445,7 +473,7 @@ export default function AuthorityReview() {
             <div>
               <h3 className="mb-0">Authority Review Panel</h3>
               <p className="mb-0">
-                Pending Applications: {applications.length}
+                Total Applications: {applications.length} | Pending: {applications.filter(app => isPendingStatus(app.status)).length}
               </p>
             </div>
             <div className="d-flex gap-2 align-items-center">
@@ -497,10 +525,6 @@ export default function AuthorityReview() {
                     <th>Course</th>
                     <th>CGPA</th>
                     <th>12th %</th>
-                    <th>Category Certificate</th>
-                    <th>Semester Marksheet</th>
-                    <th>Boards Marksheet</th>
-                    <th>ID Card</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
@@ -527,110 +551,18 @@ export default function AuthorityReview() {
                           {application.percent_12th}%
                         </span>
                       </td>
-                      <td>
-                        {application.category_certificate ? (
-                          <button
-                            className="btn btn-sm btn-link p-0"
-                            onClick={() =>
-                              viewDocumentInTable(
-                                application.category_certificate,
-                                "Category Certificate"
-                              )
-                            }
-                          >
-                            View
-                          </button>
-                        ) : (
-                          "N/A"
-                        )}
-                      </td>
-                      <td>
-                        {application.recent_sem_marksheet ? (
-                          <button
-                            className="btn btn-sm btn-link p-0"
-                            onClick={() =>
-                              viewDocumentInTable(
-                                application.recent_sem_marksheet,
-                                "Semester Marksheet"
-                              )
-                            }
-                          >
-                            View
-                          </button>
-                        ) : (
-                          "N/A"
-                        )}
-                      </td>
-                      <td>
-                        {application.marksheet_12th ? (
-                          <button
-                            className="btn btn-sm btn-link p-0"
-                            onClick={() =>
-                              viewDocumentInTable(
-                                application.marksheet_12th,
-                                "12th Marksheet"
-                              )
-                            }
-                          >
-                            View
-                          </button>
-                        ) : (
-                          "N/A"
-                        )}
-                      </td>
-                      <td>
-                        {application.id_card ? (
-                          <button
-                            className="btn btn-sm btn-link p-0"
-                            onClick={() =>
-                              viewDocumentInTable(
-                                application.id_card,
-                                "ID Card"
-                              )
-                            }
-                          >
-                            View
-                          </button>
-                        ) : (
-                          "N/A"
-                        )}
-                      </td>
                       <td>{getStatusBadge(application.status)}</td>
                       <td>
-                        <div className="btn-group">
+                        <div className="d-flex gap-2">
+                          {/* Always show Review button */}
                           <button
                             className="btn btn-sm btn-outline-primary"
                             onClick={() => setSelectedApplication(application)}
+                            title="Review Application"
                           >
                             <i className="fas fa-eye me-1"></i>
                             Review
                           </button>
-                          {application.status === "Pending" && (
-                            <>
-                              <button
-                                className="btn btn-sm btn-outline-success"
-                                onClick={() =>
-                                  updateApplicationStatus(
-                                    application.application_id,
-                                    "Approved by Authority"
-                                  )
-                                }
-                              >
-                                <i className="fas fa-check"></i>
-                              </button>
-                              <button
-                                className="btn btn-sm btn-outline-danger"
-                                onClick={() =>
-                                  updateApplicationStatus(
-                                    application.application_id,
-                                    "Rejected by Authority"
-                                  )
-                                }
-                              >
-                                <i className="fas fa-times"></i>
-                              </button>
-                            </>
-                          )}
                         </div>
                       </td>
                     </tr>
