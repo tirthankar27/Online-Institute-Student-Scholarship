@@ -25,7 +25,7 @@ A full-stack web application that allows institutes to manage and distribute sch
 Frontend
 
 * React.js
-* Tailwind CSS
+* BootStrap
 * JavaScript
 
 Backend
