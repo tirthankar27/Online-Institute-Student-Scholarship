@@ -31,4 +31,7 @@ Backend/uploads/
 Frontend/node_modules/
 Backend/.venv/
 .env
+.env.*
+frontend/.env
+backend/.env
 __pycache__/
